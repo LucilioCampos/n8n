@@ -10,11 +10,18 @@
     "start:default": "cd packages/cli/bin && ./n8n",
     "start:windows": "cd packages/cli/bin && n8n",
     "test": "lerna run test",
-    "watch": "lerna run --parallel watch"
+    "watch": "lerna run --parallel watch",
+    "install": "node setup.js"
   },
   "devDependencies": {
     "lerna": "^3.13.1",
     "run-script-os": "^1.0.7"
   },
-  "postcss": {}
+  "postcss": {},
+  "dependencies": {
+    "global": "^4.4.0",
+    "graphql-request": "^1.8.2",
+    "n8n-node-dev": "^0.6.0",
+    "nodemon": "^2.0.3"
+  }
 }

@@ -12,3 +12,6 @@ _START_PACKAGE
 .env
 .vscode
 .idea
+yarn-error.log
+
+
