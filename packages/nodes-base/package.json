@@ -197,6 +197,7 @@
             "dist/nodes/PayPal/PayPalTrigger.node.js",
             "dist/nodes/Pipedrive/Pipedrive.node.js",
             "dist/nodes/Pipedrive/PipedriveTrigger.node.js",
+            "dist/nodes/Pipefy/PipefyTrigger.node.js",
             "dist/nodes/Pipefy/Pipefy.node.js",
             "dist/nodes/Postgres/Postgres.node.js",
             "dist/nodes/ReadBinaryFile.node.js",

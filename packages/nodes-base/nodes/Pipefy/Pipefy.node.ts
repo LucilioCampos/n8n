@@ -11,6 +11,7 @@ export class Pipefy implements INodeType {
   description: INodeTypeDescription = {
     displayName: 'Pipefy',
     name: 'pipefy',
+    icon: 'file:pipefy.png',
     group: ['transform'],
     version: 1,
     description: 'integrate with pipefy',
@@ -59,14 +60,72 @@ export class Pipefy implements INodeType {
             value: 'create',
             description: 'Create a webhook'
           },
+          {
+            name: 'Show',
+            value: 'show',
+            description: 'List webhooks of a pipe'
+          },
         ],
         default: 'create',
         description: 'The operation to perform'
       },
 
       {
-        displayName: 'Subject',
-        name: 'subject',
+        displayName: 'Pipe ID',
+        name: 'pipe_id',
+        type: 'string',
+        default: '',
+        required: true,
+        displayOptions: {
+          show: {
+            operation: [
+              'create',
+              'show'
+            ],
+            resource: [
+              'webhook',
+            ],
+          },
+        },
+        description: 'The subject of the activity to create',
+      },
+      {
+        displayName: 'Webhook Name',
+        name: 'name',
+        type: 'string',
+        default: '',
+        required: true,
+        displayOptions: {
+          show: {
+            operation: [
+              'create',
+            ],
+            resource: [
+              'webhook',
+            ],
+          },
+        },
+      },
+      {
+        displayName: 'E-mail',
+        name: 'email',
+        type: 'string',
+        default: '',
+        required: true,
+        displayOptions: {
+          show: {
+            operation: [
+              'create',
+            ],
+            resource: [
+              'webhook',
+            ],
+          },
+        },
+      },
+      {
+        displayName: 'Postback Url',
+        name: 'url',
         type: 'string',
         default: '',
         required: true,
@@ -83,6 +142,7 @@ export class Pipefy implements INodeType {
         description: 'The subject of the activity to create',
       },
 
+
     ]
   };
 
@@ -93,51 +153,80 @@ export class Pipefy implements INodeType {
     const returnData: IDataObject[] = []
 
 
-    let query: string;
-    let subject: string;
+    let query: string = '';
+    let body: IDataObject;
+    let pipeId: string;
     let item: INodeExecutionData;
     let myString: string;
+
+    let responseData;
 
     const resource = this.getNodeParameter('resource', 0) as string;
     const operation = this.getNodeParameter('operation', 0) as string;
 
+    pipeId = this.getNodeParameter('pipe_id', 0) as string;
 
+    for (let i = 0; i < items.length; i++) {
 
-    if (['create'].includes(operation) && ['webhook'].includes(resource)) {
-      subject = this.getNodeParameter('subject', 0) as string;
-      const id = parseInt(subject) as number
+      let url: string;
+      let webhookName: string;
+      let email: string;
 
-      query = `mutation{ createWebhook(input: { pipe_id: ${id} name: "New Webhook" email: "lucilio@codeby.com.br" url: "https://codeby-loyalty-back-end.nanoapp.io/web-hook-orders" actions: ["card.create", "card.done"] } ) {webhook { id name }}}
-      `
-      // query = `mutation{ createWebhook(input: { pipe_id: ${id} name: "New Webhook teste" email: "lucilio@codeby.com.br" url: "https://codeby-loyalty-back-end.nanoapp.io/web-hook-orders" actions: ["card.create", "card.done"] } ) { webhook { id name } } }`
-      console.log("CREATE WEBHOOK QUERY: ", query.replace(/\n/g, ''))
+      if (resource === 'webhook') {
+        if (operation === 'create') {
 
+          const id = parseInt(pipeId) as number
+          url = this.getNodeParameter('url', 0) as string;
+          webhookName = this.getNodeParameter('name', 0) as string;
+          email = this.getNodeParameter('email', 0) as string;
 
-    } else {
-      throw new Error(`The resource "${resource}" is not known!`);
+          query = `mutation{ 
+            createWebhook(input: { 
+              pipe_id: ${id} 
+              name: "${webhookName}" 
+              email: "${email}" 
+              url: "${url}" 
+              actions: ["card.create", "card.done"] 
+            } ) { webhook { id name } }
+          }`
+          
+          responseData = await pipefyApiRequest.call(this, query);
+          
+          const { webhook } = responseData.data.createWebhook
+          
+          returnData.push(webhook as IDataObject);
+
+        }else if (operation === 'show') {
+          query = `{ pipe(id: ${pipeId}){  
+            id, webhooks { 
+              id, 
+              actions, 
+              email, 
+              name, 
+              url 
+            } 
+          }}`
+          responseData = await pipefyApiRequest.call(this, query);
+          const  webhooks  = responseData.data.pipe.webhooks
+          webhooks.forEach((e: any) => delete e.actions)
+          const keys = Object.keys(webhooks[0])
+      
+          console.log("KEYS >", keys)
+          console.log("VALUES > ", webhooks)
+      
+          returnData.push.apply(keys, webhooks as IDataObject[])
+      
+      
+          if (Array.isArray(responseData)) {
+            returnData.push.apply(returnData[0], webhooks as IDataObject[]);
+          } else {
+            returnData.push(webhooks as IDataObject);
+          }
+        }
+      }
     }
 
-    let responseData;
-
-    responseData = await pipefyApiRequest.call(this, query.replace(/\n/g, ''));
-    console.log("RESPONSE DATA", responseData)
-    returnData.push.apply(returnData, responseData.data as IDataObject[])
-
-
-    // Itterates over all input items and add the key "myString" with the
-    // value the parameter "myString" resolves to.
-    // (This could be a different value for each item in case it contains an expression)
-    for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-      myString = this.getNodeParameter('resource', 0) as string;
-      item = items[itemIndex];
-
-      const { id, name } = responseData.data.createWebhook.webhook
-
-      item.json['id'] = id;
-      item.json['name'] = name
-    }
-
-    return this.prepareOutputData(items);
+    return [this.helpers.returnJsonArray(returnData[0])];
 
   }
 }
